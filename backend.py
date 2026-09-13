@@ -10,7 +10,8 @@ os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
 from typing import TypedDict, Annotated
 import operator
 import uuid
-
+import json
+import asyncio
 import psycopg
 from psycopg.rows import dict_row
 
@@ -23,8 +24,10 @@ from langchain_core.messages import(
     SystemMessage,
 )
 from langchain_google_genai import ChatGoogleGenerativeAI
-from tools.tavily_tool import tavily_search
-from tools.flight_tool import search_flights
+from mcp_client import tavily_mcp_search, aviation_mcp_call
+import nest_asyncio
+nest_asyncio.apply()
+
 
 def get_database_url():
     database_url = os.getenv("DATABASE_URL")
@@ -48,7 +51,7 @@ if not GOOGLE_API_KEY:
 # =========================
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-3.6-flash",
+    model="gemini-3.1-flash-lite",
     google_api_key=GOOGLE_API_KEY,
     vertexai=False,
 )
@@ -70,22 +73,102 @@ class TravelState(TypedDict):
 # Flight Agent
 # =========================
 
+# def flight_agent(state: TravelState):
+#     query = state["user_query"]
+#     flight_data = search_flights(query)
+
+#     return {
+#         "flight_results": flight_data,
+#         "messages": [
+#             AIMessage(content="Flight results fetched.")
+#         ],
+#         "llm_calls": state.get("llm_calls", 0) + 1
+#     }
+
+
+# Flight Tool Router Prompt
+FLIGHT_AGENT_PROMPT = """
+You are a travel flight expert.
+
+User Query:
+{query}
+
+Airport Information:
+{airport_data}
+
+Airline Information:
+{airline_data}
+
+Generate:
+
+1. Likely departure airport
+2. Likely arrival airport
+3. Airlines serving this route
+4. Typical flight duration
+5. Estimated airfare range
+6. Peak season pricing warning
+7. Booking advice
+
+Return concise travel guidance.
+"""
+
+# Flight Agent
 def flight_agent(state: TravelState):
+    print("\nINSIDE FLIGHT AGENT\n")
+
     query = state["user_query"]
-    flight_data = search_flights(query)
+
+    try:
+        airports = asyncio.run(
+            aviation_mcp_call(
+                "list_airports"
+            )
+        )
+
+        airlines = asyncio.run(
+            aviation_mcp_call(
+                "list_airlines"
+            )
+        )
+
+
+        print("\nAIRPORTS:", airports)
+        print("\nAIRLINES:", airlines)
+
+        prompt = FLIGHT_AGENT_PROMPT.format(
+            query=query,
+            airport_data=str(airports)[:3000],
+            airline_data=str(airlines)[:3000]
+        )
+
+        response = llm.invoke([
+            SystemMessage(
+                content="You are an expert travel flight planner."
+            ),
+            HumanMessage(content=prompt)
+        ])
+
+        flight_data = response.content
+
+    except Exception as e:
+
+        flight_data = f"Flight information unavailable: {str(e)}"
 
     return {
         "flight_results": flight_data,
         "messages": [
-            AIMessage(content="Flight results fetched.")
+            AIMessage(
+                content="Flight recommendations generated"
+            )
         ],
         "llm_calls": state.get("llm_calls", 0) + 1
     }
 
+
 def hotel_agent(state: TravelState):
     query = f"Best hotels for {state['user_query']}"
-    hotel_results = tavily_search(query)
-    # hotel_results = asyncio.run(tavily_mcp_search(query))
+    # hotel_results = tavily_search(query)
+    hotel_results = asyncio.run(tavily_mcp_search(query))
 
     return {
         "hotel_results": hotel_results,
@@ -240,17 +323,43 @@ def run_travel_agent(user_input: str, thread_id: str | None = None):
         "llm_calls": 0
     }
     
-    # Use .stream() with stream_mode="messages" to get raw LLM tokens
-    for chunk, metadata in travel_graph.stream(initial_state, config=config, stream_mode="messages"):
-        # Filter: Only yield tokens when the "final_agent" node is executing
-        if metadata.get("langgraph_node") == "final_agent":
-            content = chunk.content
-            if isinstance(content, list):
-                content = ''.join(
-                    part.get('text', '') if isinstance(part, dict) else str(part)
-                    for part in content
-                )
+    statuses = {
+        "flight_agent": ("Searching flights", "Flight research completed"),
+        "hotel_agent": ("Finding hotel recommendations", "Hotel research completed"),
+        "itinerary_agent": ("Preparing your itinerary", "Itinerary prepared"),
+        "final_agent": ("Writing final recommendations", "Trip plan ready"),
+    }
 
-            # StreamingResponse requires each yielded chunk to be text or bytes.
-            if content:
-                yield str(content)
+    def event(event_type, **payload):
+        return json.dumps({"type": event_type, **payload}) + "\n"
+
+    yield event("status", message="Starting your travel plan", state="active")
+
+    # Stream node updates for progress and message chunks for the final answer.
+    stream = travel_graph.stream(
+        initial_state,
+        config=config,
+        stream_mode=["messages", "updates"],
+    )
+    announced_nodes = set()
+
+    for mode, chunk in stream:
+        if mode == "updates":
+            for node_name in chunk:
+                if node_name in statuses and node_name not in announced_nodes:
+                    started, completed = statuses[node_name]
+                    yield event("status", message=started, state="complete")
+                    yield event("status", message=completed, state="complete")
+                    announced_nodes.add(node_name)
+        elif mode == "messages":
+            message_chunk, metadata = chunk
+            if metadata.get("langgraph_node") == "final_agent":
+                content = message_chunk.content
+                if isinstance(content, list):
+                    content = ''.join(
+                        part.get('text', '') if isinstance(part, dict) else str(part)
+                        for part in content
+                    )
+
+                if content:
+                    yield event("answer", content=str(content))
