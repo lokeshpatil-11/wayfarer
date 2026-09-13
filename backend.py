@@ -50,6 +50,7 @@ if not GOOGLE_API_KEY:
 llm = ChatGoogleGenerativeAI(
     model="gemini-3.6-flash",
     google_api_key=GOOGLE_API_KEY,
+    vertexai=False,
 )
 
 # =========================
