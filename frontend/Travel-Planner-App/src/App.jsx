@@ -223,7 +223,7 @@ function App() {
         <div className="contact-details">
           <a className="contact-link" href="mailto:patillokesh1105@gmail.com"><span className="contact-label">EMAIL</span><strong>patillokesh1105@gmail.com</strong><span className="contact-arrow">↗</span></a>
           <a className="contact-link" href="https://www.linkedin.com/in/lokeshpatil11" target="_blank" rel="noreferrer"><span className="contact-label">LINKEDIN</span><strong>linkedin.com/in/lokeshpatil11</strong><span className="contact-arrow">↗</span></a>
-          <a className="resume-button" href="/resume.pdf" download="Lokesh_Patil_Resume.pdf">Download resume <span>↓</span></a>
+          <a className="resume-button" href="/Lokesh_Patil_Resume_Fullstack_Developer.pdf" download="Lokesh_Patil_Resume_Fullstack_Developer.pdf">Download resume <span>↓</span></a>
         </div>
       </section>}
       <footer><span>Made for the beautifully curious.</span><span>© 2026 wayfarer</span></footer>
