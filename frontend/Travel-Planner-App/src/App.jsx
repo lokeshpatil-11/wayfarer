@@ -114,6 +114,7 @@ function App() {
   const [isPlanning, setIsPlanning] = useState(false)
   const [planError, setPlanError] = useState('')
   const [planAnswer, setPlanAnswer] = useState('')
+  const [processSteps, setProcessSteps] = useState([])
 
   const popularPlaces = [
     { city: 'Lisbon', country: 'Portugal', emoji: '🇵🇹', color: 'sunset' },
@@ -143,17 +144,35 @@ function App() {
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let answer = ''
+      let pending = ''
       setPlanAnswer('')
+      setProcessSteps([])
       setTripStarted(true)
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        answer += decoder.decode(value, { stream: true })
-        setPlanAnswer(toDisplayText(answer))
+        pending += decoder.decode(value, { stream: true })
+        const events = pending.split('\n')
+        pending = events.pop()
+        for (const line of events) {
+          if (!line.trim()) continue
+          const event = JSON.parse(line)
+          if (event.type === 'status') {
+            setProcessSteps((steps) => [...steps, event.message])
+          }
+          if (event.type === 'answer') {
+            answer += event.content
+            setPlanAnswer(toDisplayText(answer))
+          }
+        }
       }
 
-      answer += decoder.decode()
+      pending += decoder.decode()
+      if (pending.trim()) {
+        const event = JSON.parse(pending)
+        if (event.type === 'answer') answer += event.content
+      }
       setPlanAnswer(toDisplayText(answer) || 'Your itinerary is ready.')
     } catch (error) {
       setPlanError(error.message)
@@ -188,6 +207,7 @@ function App() {
             <div className="form-footer"><span className="form-hint"><span className="sparkle">✧</span> Designed and developed by Lokesh Patil</span><button className="plan-button" type="submit" disabled={isPlanning}>{isPlanning ? 'Planning...' : tripStarted ? 'Trip started' : 'Start planning'} <span>→</span></button></div>
             {planError && <p className="form-message error-message" role="alert">{planError}</p>}
           </form>
+          {isPlanning && <section className="process-panel" aria-live="polite"><span className="answer-label">PLANNER ACTIVITY</span>{processSteps.map((step, index) => <div className="process-step" key={`${step}-${index}`}><span className="step-marker">{index === processSteps.length - 1 ? '·' : '✓'}</span><span>{step}</span></div>)}</section>}
           {planAnswer && <article className="plan-answer"><span className="answer-label">YOUR AI ITINERARY</span><MarkdownContent content={planAnswer} /></article>}
           <div className="quick-links"><span>Try one of these</span><div className="chip-row">{['A long weekend', 'Food & culture', 'Off the beaten path'].map((chip) => <button key={chip} onClick={() => setDestination(chip)}>{chip}</button>)}</div></div>
         </div>
