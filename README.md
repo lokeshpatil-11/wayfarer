@@ -13,8 +13,8 @@ Wayfarer is a full-stack AI application built to demonstrate how an LLM can coor
 ## Why This Project Stands Out
 
 - **Multi-agent orchestration:** LangGraph coordinates flight research, hotel research, itinerary generation, and final response writing as separate workflow stages.
-- **Tool-augmented answers:** Flight data and web research are gathered before the LLM writes the plan.
-- **Real-time UX:** FastAPI streams the final agent response while the React client progressively renders it.
+- **MCP-powered research:** Tavily and AviationStack MCP servers provide web research and flight data through LangChain MCP adapters.
+- **Real-time UX:** FastAPI streams agent progress events and the final response while the React client progressively renders both.
 - **Readable output:** Markdown is converted into structured headings, lists, callouts, and responsive budget tables in the browser.
 - **Persistent state:** PostgreSQL-backed LangGraph checkpointing enables thread-based workflow state.
 - **Production-minded structure:** A FastAPI backend, Vite frontend, environment-based secrets, health endpoint, and Docker support keep the project easy to extend and deploy.
@@ -25,6 +25,9 @@ Wayfarer is a full-stack AI application built to demonstrate how an LLM can coor
 Traveler request
 	|
 	v
+Tavily MCP + AviationStack MCP
+			  |
+			  v
 Flight research -> Hotel research -> Itinerary generation -> Final travel response
 											  |
 											  v
@@ -39,7 +42,7 @@ Flight research -> Hotel research -> Itinerary generation -> Final travel respon
 | API | Health checks and streaming HTTP endpoint | FastAPI + Uvicorn |
 | Workflow | Directed multi-agent execution and shared state | LangGraph |
 | LLM | Itinerary and final response generation | Google Gemini via LangChain |
-| Research tools | Flight lookup and travel web search | `tools/flight_tool.py`, Tavily |
+| MCP integration | Web research and flight data | Tavily MCP + AviationStack MCP |
 | Persistence | Workflow checkpoints and thread state | PostgreSQL + `PostgresSaver` |
 
 ## Repository Structure
@@ -48,9 +51,8 @@ Flight research -> Hotel research -> Itinerary generation -> Final travel respon
 .
 ├── app.py                         # FastAPI app and streaming endpoint
 ├── backend.py                     # LangGraph workflow and agent implementations
-├── tools/
-│   ├── flight_tool.py             # Flight search integration
-│   └── tavily_tool.py             # Travel web research integration
+├── mcp_client.py                  # Tavily and AviationStack MCP client setup
+├── test.py                        # MCP tool discovery check
 ├── frontend/Travel-Planner-App/
 │   ├── src/App.jsx                # React experience and Markdown renderer
 │   ├── src/App.css                # Responsive visual system
@@ -69,10 +71,13 @@ Create a `.env` file in the repository root:
 ```env
 GOOGLE_API_KEY=your_google_api_key
 TAVILY_API_KEY=your_tavily_api_key
+AVIATIONSTACK_API_KEY=your_aviationstack_api_key
 DATABASE_URL=postgresql://user:password@host:5432/database
 ```
 
 `DATABASE_URL` must point to a PostgreSQL instance. SSL mode is added automatically when it is not already present.
+
+The AviationStack MCP server is launched through `uvx` and requires `uv` to be installed and available on your `PATH`. The MCP server currently requires MCP 1.x; `mcp_client.py` pins its isolated server environment with `mcp<2`.
 
 ### 2. Install Python dependencies
 
@@ -118,13 +123,30 @@ GET /api/health
 GET /stream-travel?user_input=Pune%20to%20Mumbai%20for%202%20days
 ```
 
-The endpoint returns `text/plain` and streams the final agent response as it is generated. An optional `thread_id` query parameter can be supplied to associate the run with an existing LangGraph checkpoint thread.
+The endpoint returns newline-delimited JSON (`application/x-ndjson`) and streams two event types:
+
+```json
+{"type":"status","message":"Searching flights","state":"complete"}
+{"type":"answer","content":"## Trip Summary"}
+```
+
+Status events expose the active workflow stages in the UI, while answer events progressively deliver the final Markdown response. An optional `thread_id` query parameter can be supplied to associate the run with an existing LangGraph checkpoint thread.
+
+### MCP tool discovery
+
+To verify that both MCP servers are reachable and list their tools:
+
+```powershell
+python test.py
+```
+
+The client connects to Tavily using streamable HTTP and launches AviationStack through stdio with `uvx`.
 
 ## Frontend Highlights
 
 - Responsive full-width planning workspace
 - Destination suggestions and quick prompts
-- Streaming progress state while the agent works
+- Live workflow activity timeline while the agent works
 - Markdown-aware itinerary presentation
 - Styled travel notes, headings, nested recommendations, and budget tables
 - Mobile-friendly layout with horizontal table scrolling
