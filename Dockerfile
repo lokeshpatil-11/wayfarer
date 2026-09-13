@@ -1,3 +1,14 @@
+# Build the React frontend before creating the smaller Python runtime image.
+FROM node:22-alpine AS frontend-build
+
+WORKDIR /frontend
+
+COPY frontend/Travel-Planner-App/package*.json ./
+RUN npm ci
+
+COPY frontend/Travel-Planner-App/ ./
+RUN npm run build
+
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -17,6 +28,7 @@ RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+COPY --from=frontend-build /frontend/dist /app/frontend/Travel-Planner-App/dist
 
 EXPOSE 8080
 

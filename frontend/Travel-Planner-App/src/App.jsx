@@ -110,7 +110,6 @@ function MarkdownContent({ content }) {
 function App() {
   const [destination, setDestination] = useState('')
   const [activeNav, setActiveNav] = useState('Plan a trip')
-  const [isSaved, setIsSaved] = useState(false)
   const [tripStarted, setTripStarted] = useState(false)
   const [isPlanning, setIsPlanning] = useState(false)
   const [planError, setPlanError] = useState('')
@@ -166,13 +165,14 @@ function App() {
   return (
     <main className="app-shell">
       <nav className="topbar" aria-label="Primary navigation">
-        <a className="brand" href="#top" aria-label="Wayfarer home"><span className="brand-mark">✦</span><span>wayfarer<span className="brand-dot">.</span></span></a>
+        <button className="brand" onClick={() => setActiveNav('Plan a trip')} aria-label="Wayfarer home"><span className="brand-mark">✦</span><span>wayfarer<span className="brand-dot">.</span></span></button>
         <div className="nav-links">
-          {['Plan a trip', 'Explore', 'Saved'].map((item) => <button className={`nav-link ${activeNav === item ? 'active' : ''}`} key={item} onClick={() => setActiveNav(item)}>{item}{item === 'Saved' && <span className="saved-count">3</span>}</button>)}
+          {['Plan a trip', 'Contact Me'].map((item) => <button className={`nav-link ${activeNav === item ? 'active' : ''}`} key={item} onClick={() => setActiveNav(item)}>{item}</button>)}
         </div>
-        <button className="profile-button" aria-label="Open profile"><span className="avatar">A</span><span className="profile-name">Alex</span><span className="chevron">⌄</span></button>
+        <span className="nav-spacer" aria-hidden="true" />
       </nav>
 
+      {activeNav === 'Plan a trip' ? <>
       <section className="workspace" id="top">
         <div className="intro-column">
           <div className="eyebrow"><span className="eyebrow-line" /> AI TRAVEL PLANNER</div>
@@ -193,8 +193,20 @@ function App() {
         </div>
       </section>
 
-      <section className="popular-section"><div className="section-heading"><div><span className="eyebrow small">THE GOOD STUFF</span><h2>Places with a little <em>pull.</em></h2></div><button className="text-button" onClick={() => setActiveNav('Explore')}>View all <span>→</span></button></div><div className="place-grid">{popularPlaces.map((place) => <button className="place-card" key={place.city} onClick={() => setDestination(`${place.city}, ${place.country}`)}><div className={`place-art ${place.color}`}><span>{place.emoji}</span></div><div className="place-info"><strong>{place.city}</strong><span>{place.country}</span><span className="place-arrow">↗</span></div></button>)}</div></section>
-      <footer><span>Made for the beautifully curious.</span><span>© 2025 wayfarer</span></footer>
+      <section className="popular-section"><div className="section-heading"><div><span className="eyebrow small">THE GOOD STUFF</span><h2>Places with a little <em>pull.</em></h2></div></div><div className="place-grid">{popularPlaces.map((place) => <button className="place-card" key={place.city} onClick={() => setDestination(`${place.city}, ${place.country}`)}><div className={`place-art ${place.color}`}><span>{place.emoji}</span></div><div className="place-info"><strong>{place.city}</strong><span>{place.country}</span><span className="place-arrow">↗</span></div></button>)}</div></section>
+      </> : <section className="contact-page">
+        <div className="contact-intro">
+          <div className="eyebrow"><span className="eyebrow-line" /> LET'S CONNECT</div>
+          <h1>Build something<br /><em>meaningful.</em></h1>
+          <p className="intro-copy">I’m Lokesh Patil, a full-stack developer focused on thoughtful products and practical AI experiences.</p>
+        </div>
+        <div className="contact-details">
+          <a className="contact-link" href="mailto:patillokesh1105@gmail.com"><span className="contact-label">EMAIL</span><strong>patillokesh1105@gmail.com</strong><span className="contact-arrow">↗</span></a>
+          <a className="contact-link" href="https://www.linkedin.com/in/lokeshpatil11" target="_blank" rel="noreferrer"><span className="contact-label">LINKEDIN</span><strong>linkedin.com/in/lokeshpatil11</strong><span className="contact-arrow">↗</span></a>
+          <a className="resume-button" href="/resume.pdf" download="Lokesh_Patil_Resume.pdf">Download resume <span>↓</span></a>
+        </div>
+      </section>}
+      <footer><span>Made for the beautifully curious.</span><span>© 2026 wayfarer</span></footer>
     </main>
   )
 }

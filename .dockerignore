@@ -5,3 +5,13 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Build the frontend inside Docker instead of copying local artifacts.
+frontend/Travel-Planner-App/node_modules/
+frontend/Travel-Planner-App/dist/
+
+# Local and repository-only files.
+.git/
+__pycache__/
+*.py[cod]
+.env
