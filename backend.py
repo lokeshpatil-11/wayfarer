@@ -40,13 +40,8 @@ def get_database_url():
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 if not GOOGLE_API_KEY:
-    raise ValueError("GEMINI_API_KEY is missing. Add a Google AI Studio API key to your .env file.")
+    raise ValueError("GOOGLE_API_KEY is missing. Add a Google AI Studio API key to your .env file.")
 
-if GOOGLE_API_KEY.startswith(("AQ.", "ya29.", "Bearer ")):
-    raise ValueError(
-        "GEMINI_API_KEY must be a Google AI Studio API key, not an OAuth access token. "
-        "Create an API key in Google AI Studio and replace the current credential."
-    )
 
 # =========================
 # LLM
@@ -55,6 +50,7 @@ if GOOGLE_API_KEY.startswith(("AQ.", "ya29.", "Bearer ")):
 llm = ChatGoogleGenerativeAI(
     model="gemini-3.6-flash",
     google_api_key=GOOGLE_API_KEY,
+    vertexai = True
 )
 
 # =========================
