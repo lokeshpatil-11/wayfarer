@@ -46,7 +46,7 @@ def plan_trip(request: TravelRequest):
 def stream_travel(user_input: str, thread_id: str | None = None):
     return StreamingResponse(
         stream_travel_agent(user_input, thread_id),
-        media_type="text/plain"
+        media_type="application/x-ndjson"
     )
 
 FRONTEND_DIST = BASE_DIR / "frontend" / "Travel-Planner-App" / "dist"
