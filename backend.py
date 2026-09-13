@@ -38,7 +38,7 @@ def get_database_url():
 
     return database_url
 
-GOOGLE_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 if not GOOGLE_API_KEY:
     raise ValueError("GEMINI_API_KEY is missing. Add a Google AI Studio API key to your .env file.")
 
