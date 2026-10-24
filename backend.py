@@ -27,17 +27,6 @@ import nest_asyncio
 nest_asyncio.apply()
 
 
-def get_database_url():
-    database_url = os.getenv("DATABASE_URL")
-
-    if not database_url:
-        raise ValueError("DATABASE_URL is missing. Please add your render PostgreSQL External Database URL to .env")
-
-    if "sslmode=" not in database_url:
-        separator = "&" if "?" in database_url else "?"
-        database_url = f"{database_url}{separator}sslmode=require"
-
-    return database_url
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 if not GOOGLE_API_KEY:
@@ -285,17 +274,8 @@ graph.add_edge("final_agent", END)
 # =========================
 # PostgreSQL Checkpointer
 # =========================
-DATABASE_URL = get_database_url()
 
-_conn = psycopg.connect(
-    DATABASE_URL,
-    autocommit=True,
-    row_factory=dict_row
-)
-
-checkpointer = PostgresSaver(_conn)
-checkpointer.setup()
-
+checkpointer = InMemorySaver()
 travel_graph = graph.compile(checkpointer=checkpointer)
 
 # =========================
