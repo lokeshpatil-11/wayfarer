@@ -12,11 +12,9 @@ import operator
 import uuid
 import json
 import asyncio
-import psycopg
-from psycopg.rows import dict_row
 
 from langgraph.graph import StateGraph, START, END
-from langgraph.checkpoint.postgres import PostgresSaver
+from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.messages import(
     AnyMessage,
     HumanMessage,
